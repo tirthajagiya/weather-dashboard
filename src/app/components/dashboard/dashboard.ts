@@ -44,8 +44,8 @@ import { forkJoin } from 'rxjs';
           </p>
         </header>
 
-        <div class="mb-10">
-          <app-search (search)="onSearch($event)"></app-search>
+    <div class="mb-10">
+          <app-search [query]="weather?.city || ''" (search)="onSearch($event)"></app-search>
         </div>
 
         <main class="min-h-[400px]">
@@ -74,6 +74,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   errorMessage = '';
   lastQuery: string | {lat: number, lon: number} = 'Bengaluru';
   private defaultCityTimer: any;
+  private hasFetchedLocation = false;
+  private userSearched = false;
 
   constructor(
     private weatherService: WeatherService
@@ -88,6 +90,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (this.userSearched) return;
+          this.hasFetchedLocation = true;
           this.clearDefaultCityTimer();
           this.lastQuery = {
             lat: position.coords.latitude,
@@ -96,10 +100,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.fetchData();
         },
         () => {
-          this.lastQuery = 'Bengaluru';
-          this.fetchData();
+          if (this.userSearched) return;
+          // If we haven't fetched anything yet, immediately load Bangalore fallback
+          if (!this.hasFetchedLocation && !this.weather) {
+            this.clearDefaultCityTimer();
+            this.lastQuery = 'Bengaluru';
+            this.fetchData();
+          }
         },
-        { timeout: 4000 }
+        { timeout: 15000 } // Give it longer (15s) in case they grant permission late
       );
     } else {
       this.lastQuery = 'Bengaluru';
@@ -109,11 +118,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   startDefaultCityTimer() {
     this.defaultCityTimer = setTimeout(() => {
-      if (!this.weather && !this.error) {
+      if (!this.hasFetchedLocation && !this.weather && !this.userSearched) {
         this.lastQuery = 'Bengaluru';
         this.fetchData();
       }
-    }, 8000);
+    }, 5000); // exactly 5 seconds fallback
   }
 
   clearDefaultCityTimer() {
@@ -123,6 +132,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   onSearch(city: string) {
+    this.userSearched = true;
     this.clearDefaultCityTimer();
     this.lastQuery = city;
     this.fetchData();
@@ -135,7 +145,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private fetchData() {
     this.loading = true;
     this.error = false;
-    this.clearDefaultCityTimer();
     
     const request = typeof this.lastQuery === 'string'
       ? {

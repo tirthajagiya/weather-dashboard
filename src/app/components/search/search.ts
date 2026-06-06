@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Subscription, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
@@ -34,6 +34,12 @@ export class SearchComponent implements OnInit, OnDestroy {
   searchControl = new FormControl('');
   private searchSubject = new Subject<string>();
   private sub: Subscription | null = null;
+
+  @Input() set query(val: string) {
+    if (val) {
+      this.searchControl.setValue(val, { emitEvent: false });
+    }
+  }
 
   @Output() search = new EventEmitter<string>();
 
