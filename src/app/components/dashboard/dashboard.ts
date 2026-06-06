@@ -78,6 +78,7 @@ import { forkJoin } from 'rxjs';
           <app-search
             [query]="weather?.city || ''"
             (search)="onSearch($event)"
+            (searchByCoords)="onSearchByCoords($event)"
             (requestLocation)="retryLocation()"
           ></app-search>
         </div>
@@ -231,6 +232,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.usingRealLocation = false;
     this.clearDefaultCityTimer();
     this.lastQuery = city;
+    this.fetchData();
+  }
+
+  onSearchByCoords(event: { lat: number; lon: number; name: string }) {
+    this.userSearched = true;
+    this.usingRealLocation = false;
+    this.clearDefaultCityTimer();
+    this.lastQuery = { lat: event.lat, lon: event.lon };
     this.fetchData();
   }
 

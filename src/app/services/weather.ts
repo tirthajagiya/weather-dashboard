@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, throwError } from 'rxjs';
+import { Observable, throwError, of } from 'rxjs';
 import { catchError, map, delay } from 'rxjs/operators';
 
 export interface WeatherData {
@@ -31,12 +31,43 @@ export interface DayAverage {
   avgTemp: number;
 }
 
+export interface CitySuggestion {
+  name: string;
+  state: string;
+  country: string;
+  lat: number;
+  lon: number;
+  displayName: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WeatherService {
   private apiUrl = environment.openWeatherApiUrl;
+  private geoUrl = 'https://api.openweathermap.org/geo/1.0';
   private apiKey = environment.openWeatherApiKey;
 
   constructor(private http: HttpClient) {}
+
+  /** Geocoding API: returns up to 8 city suggestions for autocomplete */
+  getCitySuggestions(query: string): Observable<CitySuggestion[]> {
+    if (!query || query.trim().length < 2 || this.apiKey === 'TODO_YOUR_API_KEY_HERE') {
+      return of([]);
+    }
+    const url = `${this.geoUrl}/direct?q=${encodeURIComponent(query)}&limit=8&appid=${this.apiKey}`;
+    return this.http.get<any[]>(url).pipe(
+      map(results => results.map(r => ({
+        name: r.name,
+        state: r.state || '',
+        country: r.country || '',
+        lat: r.lat,
+        lon: r.lon,
+        displayName: r.state
+          ? `${r.name}, ${r.state}, ${r.country}`
+          : `${r.name}, ${r.country}`
+      }))),
+      catchError(() => of([]))
+    );
+  }
 
   getCurrentWeather(city: string): Observable<WeatherData> {
     if (this.apiKey === 'TODO_YOUR_API_KEY_HERE') {
