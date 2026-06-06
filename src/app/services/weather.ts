@@ -6,20 +6,32 @@ import { catchError, map, delay } from 'rxjs/operators';
 
 export interface WeatherData {
   temp: number;
+  feelsLike: number;
+  humidity: number;
+  windSpeed: number;
   city: string;
+  country: string;
   description: string;
   icon: string;
+  sunrise: number;
+  sunset: number;
 }
 
 export interface ForecastDay {
   date: Date;
   avgTemp: number;
+  minTemp: number;
+  maxTemp: number;
   icon: string;
+  description: string;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface DayAverage {
+  date: Date;
+  avgTemp: number;
+}
+
+@Injectable({ providedIn: 'root' })
 export class WeatherService {
   private apiUrl = environment.openWeatherApiUrl;
   private apiKey = environment.openWeatherApiKey;
@@ -32,13 +44,8 @@ export class WeatherService {
     }
     const url = `${this.apiUrl}/weather?q=${city}&appid=${this.apiKey}&units=metric`;
     return this.http.get<any>(url).pipe(
-      delay(600), // small delay to ensure loading state is visible
-      map(res => ({
-        temp: res.main.temp,
-        city: res.name,
-        description: res.weather[0].description,
-        icon: `https://openweathermap.org/img/wn/${res.weather[0].icon}@2x.png`
-      })),
+      delay(500),
+      map(res => this.mapWeather(res)),
       catchError(this.handleError)
     );
   }
@@ -49,13 +56,8 @@ export class WeatherService {
     }
     const url = `${this.apiUrl}/weather?lat=${lat}&lon=${lon}&appid=${this.apiKey}&units=metric`;
     return this.http.get<any>(url).pipe(
-      delay(600),
-      map(res => ({
-        temp: res.main.temp,
-        city: res.name,
-        description: res.weather[0].description,
-        icon: `https://openweathermap.org/img/wn/${res.weather[0].icon}@2x.png`
-      })),
+      delay(500),
+      map(res => this.mapWeather(res)),
       catchError(this.handleError)
     );
   }
@@ -82,34 +84,81 @@ export class WeatherService {
     );
   }
 
+  /** Compute mathematical averages for the upcoming 4 days (excluding today) */
+  getAverages(forecast: ForecastDay[]): DayAverage[] {
+    const today = new Date().toDateString();
+    const upcoming = forecast.filter(f => f.date.toDateString() !== today);
+    return upcoming.slice(0, 4).map(f => ({
+      date: f.date,
+      avgTemp: f.avgTemp
+    }));
+  }
+
+  private mapWeather(res: any): WeatherData {
+    return {
+      temp: res.main.temp,
+      feelsLike: res.main.feels_like,
+      humidity: res.main.humidity,
+      windSpeed: res.wind.speed,
+      city: res.name,
+      country: res.sys.country,
+      description: res.weather[0].description,
+      icon: `https://openweathermap.org/img/wn/${res.weather[0].icon}@2x.png`,
+      sunrise: res.sys.sunrise,
+      sunset: res.sys.sunset
+    };
+  }
+
   private processForecast(list: any[]): ForecastDay[] {
-    const dailyData = new Map<string, { temps: number[], icon: string }>();
+    const dailyData = new Map<string, { temps: number[], minTemps: number[], maxTemps: number[], icon: string, description: string }>();
 
     list.forEach(item => {
       const date = new Date(item.dt * 1000);
       const dayKey = date.toISOString().split('T')[0];
-      
+
       if (!dailyData.has(dayKey)) {
-        // Find midday icon if possible or just use first one
-        dailyData.set(dayKey, { temps: [], icon: item.weather[0].icon.replace('n', 'd') }); 
+        dailyData.set(dayKey, {
+          temps: [],
+          minTemps: [],
+          maxTemps: [],
+          icon: item.weather[0].icon.replace('n', 'd'),
+          description: item.weather[0].description
+        });
       }
-      dailyData.get(dayKey)!.temps.push(item.main.temp);
+      const d = dailyData.get(dayKey)!;
+      d.temps.push(item.main.temp);
+      d.minTemps.push(item.main.temp_min);
+      d.maxTemps.push(item.main.temp_max);
+      // Prefer midday icon (12:00)
+      if (item.dt_txt && item.dt_txt.includes('12:00')) {
+        d.icon = item.weather[0].icon.replace('n', 'd');
+        d.description = item.weather[0].description;
+      }
     });
 
     const forecast: ForecastDay[] = [];
     dailyData.forEach((value, key) => {
       const avg = value.temps.reduce((a, b) => a + b, 0) / value.temps.length;
+      const min = Math.min(...value.minTemps);
+      const max = Math.max(...value.maxTemps);
       forecast.push({
         date: new Date(key),
         avgTemp: Math.round(avg * 10) / 10,
-        icon: `https://openweathermap.org/img/wn/${value.icon}@2x.png`
+        minTemp: Math.round(min * 10) / 10,
+        maxTemp: Math.round(max * 10) / 10,
+        icon: `https://openweathermap.org/img/wn/${value.icon}@2x.png`,
+        description: value.description
       });
     });
 
-    return forecast.slice(0, 5); // Return up to 5 days
+    // Return up to 7 days (today + 6 more)
+    return forecast.slice(0, 7);
   }
 
   private handleError(error: HttpErrorResponse) {
-    return throwError(() => new Error('Failed to fetch weather data. Please try again.'));
+    let msg = 'Failed to fetch weather data. Please try again.';
+    if (error.status === 404) msg = 'City not found. Please check the city name.';
+    if (error.status === 401) msg = 'Invalid API key. Please check configuration.';
+    return throwError(() => new Error(msg));
   }
 }

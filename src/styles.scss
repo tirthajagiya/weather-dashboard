@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,9 +9,9 @@
   --secondary-bg: #1e293b;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --accent-color: #3b82f6; 
-  --error-color: #eab308;  
-  --card-bg: rgba(30, 41, 59, 0.7);
+  --accent-color: #3b82f6;
+  --error-color: #eab308;
+  --card-bg: rgba(30, 41, 59, 0.65);
   --border-radius: 16px;
 }
 
@@ -21,22 +21,38 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, var(--primary-bg) 0%, #1e1b4b 100%);
+  background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 45%, #0f172a 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .glass-panel {
   background: rgba(30, 41, 59, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 1.5rem;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.5); }
+
+/* Selection */
+::selection { background: rgba(59,130,246,0.3); color: #f8fafc; }
+
+/* Focus visible */
+:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 6px; }
