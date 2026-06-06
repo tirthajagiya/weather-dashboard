@@ -33,6 +33,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/weather-dashboard/",
               "budgets": [
                 {
                   "type": "initial",
